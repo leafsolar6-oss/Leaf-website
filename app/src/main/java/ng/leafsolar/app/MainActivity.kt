@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.*
@@ -62,9 +61,6 @@ class MainActivity : ComponentActivity() {
       settings.mediaPlaybackRequiresUserGesture = false
       settings.cacheMode = WebSettings.LOAD_DEFAULT
       settings.databaseEnabled = true
-      settings.setAppCachePath(cacheDir.absolutePath)
-      settings.setAppCacheEnabled(true)
-      settings.allowFileAccess = true
       CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
       CookieManager.getInstance().setAcceptCookie(true)
       webViewClient = object : WebViewClient() {
@@ -217,9 +213,9 @@ private fun App(web: WebView, offline: State<Boolean>, onRetry: () -> Unit, isOn
 
 @Composable private fun OfflineBanner(onRetry: () -> Unit, isOnline: () -> Boolean) {
   Surface(color = Color(0xFF14201A), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+    modifier = Modifier.fillMaxWidth()) {
     Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-      Icon(Icons.Default.CloudOff, "Offline", tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
+      Icon(Icons.Default.Warning, "Offline", tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
       Spacer(Modifier.width(10.dp))
       Column(Modifier.weight(1f)) {
         Text("You're offline", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
