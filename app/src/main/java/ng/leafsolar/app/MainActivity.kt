@@ -28,10 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import okhttp3.OkHttpClient
-import okhttp3.Request as OkRequest
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 private val Brand = Color(0xFF3CA506)
 private const val HOME = "https://leafsolar.ng/"
@@ -46,7 +42,7 @@ private val TABS = listOf(
 
 class MainActivity : ComponentActivity() {
   private lateinit var web: WebView
-  private var cart = mutableIntStateOf(0)
+  var cart = mutableIntStateOf(0)
   @SuppressLint("SetJavaScriptEnabled")
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -156,9 +152,11 @@ private fun App(web: WebView) {
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun PullRefresh(refreshing:Boolean, onRefresh:()->Unit, content:@Composable ()->Unit) {
-  androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) { content() }
+  Box(Modifier.fillMaxSize()) {
+    content()
+    if (refreshing) CircularProgressIndicator(strokeWidth=2.dp,modifier=Modifier.align(Alignment.TopCenter).padding(8.dp), color=Brand)
+  }
 }
 
 @Composable private fun MenuDialog(onDismiss:()->Unit, onLink:(String)->Unit, onWhatsApp:()->Unit) {
