@@ -1,6 +1,7 @@
 package ng.leafsolar.app
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -58,7 +59,6 @@ class MainActivity : ComponentActivity() {
       settings.loadWithOverviewMode = true
       settings.useWideViewPort = true
       settings.mediaPlaybackRequiresUserGesture = false
-      settings.setAppCacheEnabled(true)
       settings.cacheMode = WebSettings.LOAD_DEFAULT
       settings.databaseEnabled = true
       CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
