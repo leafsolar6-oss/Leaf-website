@@ -87,6 +87,15 @@ class MainActivity : ComponentActivity() {
       addJavascriptInterface(WebAppInterface(), "Android")
       loadUrl(HOME)
     }
+    // Warm homepage cache for offline first launch
+    val sp = getSharedPreferences("leafsolar", 0)
+    if (!sp.getBoolean("home_cached", false)) {
+      try { Thread { try {
+        val w = WebView(this); w.settings.javaScriptEnabled = true; w.settings.domStorageEnabled = true
+        w.settings.cacheMode = WebSettings.LOAD_DEFAULT; w.loadUrl(HOME)
+        sp.edit().putBoolean("home_cached", true).apply()
+      } catch (_: Exception) {} }.start() } catch (_: Exception) {}
+    }
     setContent { App(web, offline, ::goOnline, ::isOnline) }
   }
   override fun onBackPressed() { if (web.canGoBack()) web.goBack() else super.onBackPressed() }
