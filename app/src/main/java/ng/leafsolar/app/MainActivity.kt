@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.webkit.*
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,7 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +58,9 @@ class MainActivity : ComponentActivity() {
       settings.loadWithOverviewMode = true
       settings.useWideViewPort = true
       settings.mediaPlaybackRequiresUserGesture = false
+      settings.setAppCacheEnabled(true)
+      settings.cacheMode = WebSettings.LOAD_DEFAULT
+      settings.databaseEnabled = true
       CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
       CookieManager.getInstance().setAcceptCookie(true)
       webViewClient = object : WebViewClient() {
@@ -64,15 +71,30 @@ class MainActivity : ComponentActivity() {
           return false
         }
         override fun onPageFinished(view: WebView?, url: String?) {
+          (context as? MainActivity)?._offline?.value = false
           view?.evaluateJavascript(CART_JS, null)
+        }
+        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+          if (request?.isForMainFrame == true) (context as? MainActivity)?.showOffline()
         }
       }
       addJavascriptInterface(WebAppInterface(), "Android")
       loadUrl(HOME)
     }
-    setContent { App(web) }
+    setContent { App(web, offline, ::goOnline, ::isOnline) }
   }
   override fun onBackPressed() { if (web.canGoBack()) web.goBack() else super.onBackPressed() }
+
+  private val _offline = mutableStateOf(false)
+  val offline: State<Boolean> = _offline
+  fun isOnline(): Boolean {
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val n = cm.activeNetwork ?: return false
+    val caps = cm.getNetworkCapabilities(n) ?: return false
+    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+  }
+  fun showOffline() { _offline.value = true }
+  fun goOnline() { _offline.value = false; web.reload() }
 
   inner class WebAppInterface {
     @android.webkit.JavascriptInterface
@@ -93,7 +115,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun App(web: WebView) {
+private fun App(web: WebView, offline: State<Boolean>, onRetry: () -> Unit, isOnline: () -> Boolean) {
   var loading by remember { mutableStateOf(true) }
   var progress by remember { mutableIntStateOf(0) }
   var tab by remember { mutableIntStateOf(0) }
@@ -144,7 +166,8 @@ private fun App(web: WebView) {
           AndroidView(factory = { web }, modifier = Modifier.fillMaxSize(),
             update = { if (pull) web.reload() })
         }
-        if (loading) LinearProgressIndicator(progress = { progress/100f }, modifier = Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter), color = Color.White, trackColor = Color(0x33FFFFFF))
+        if (loading && !offline.value) LinearProgressIndicator(progress = { progress/100f }, modifier = Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter), color = Color.White, trackColor = Color(0x33FFFFFF))
+        if (offline.value) OfflineScreen(onRetry)
       }
     }
     if (showMenu) MenuDialog(onDismiss={showMenu=false}, onLink={ url -> showMenu=false; web.loadUrl(url) },
@@ -180,3 +203,18 @@ private fun App(web: WebView) {
     }})
 }
 @Composable private fun MItem(label:String, onClick:()->Unit)=Text(label, fontSize=13.sp, modifier=Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=8.dp), color=Color(0xFF14201A))
+
+
+@Composable private fun OfflineScreen(onRetry: () -> Unit) {
+  Column(Modifier.fillMaxSize().background(Color(0xFFF7FAF6)), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+    Text("📵", fontSize = 56.sp)
+    Spacer(Modifier.height(12.dp))
+    Text("You're offline", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF14201A))
+    Spacer(Modifier.height(6.dp))
+    Text("Check your internet connection and try again.", color = Color.Gray, fontSize = 13.sp)
+    Spacer(Modifier.height(18.dp))
+    Button(onClick = onRetry, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = Brand)) {
+      Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Retry")
+    }
+  }
+}
