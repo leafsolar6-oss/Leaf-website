@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.*
@@ -61,6 +62,9 @@ class MainActivity : ComponentActivity() {
       settings.mediaPlaybackRequiresUserGesture = false
       settings.cacheMode = WebSettings.LOAD_DEFAULT
       settings.databaseEnabled = true
+      settings.setAppCachePath(cacheDir.absolutePath)
+      settings.setAppCacheEnabled(true)
+      settings.allowFileAccess = true
       CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
       CookieManager.getInstance().setAcceptCookie(true)
       webViewClient = object : WebViewClient() {
@@ -75,7 +79,13 @@ class MainActivity : ComponentActivity() {
           view?.evaluateJavascript(CART_JS, null)
         }
         override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-          if (request?.isForMainFrame == true) (context as? MainActivity)?.showOffline()
+          if (request?.isForMainFrame == true) {
+            val a = context as? MainActivity
+            if (a != null && !a.isOnline()) {
+              view?.settings?.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+              a.showOffline()
+            }
+          }
         }
       }
       addJavascriptInterface(WebAppInterface(), "Android")
@@ -167,7 +177,7 @@ private fun App(web: WebView, offline: State<Boolean>, onRetry: () -> Unit, isOn
             update = { if (pull) web.reload() })
         }
         if (loading && !offline.value) LinearProgressIndicator(progress = { progress/100f }, modifier = Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter), color = Color.White, trackColor = Color(0x33FFFFFF))
-        if (offline.value) OfflineScreen(onRetry)
+        if (offline.value) OfflineBanner(onRetry, isOnline)
       }
     }
     if (showMenu) MenuDialog(onDismiss={showMenu=false}, onLink={ url -> showMenu=false; web.loadUrl(url) },
@@ -205,16 +215,17 @@ private fun App(web: WebView, offline: State<Boolean>, onRetry: () -> Unit, isOn
 @Composable private fun MItem(label:String, onClick:()->Unit)=Text(label, fontSize=13.sp, modifier=Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=8.dp), color=Color(0xFF14201A))
 
 
-@Composable private fun OfflineScreen(onRetry: () -> Unit) {
-  Column(Modifier.fillMaxSize().background(Color(0xFFF7FAF6)), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-    Text("📵", fontSize = 56.sp)
-    Spacer(Modifier.height(12.dp))
-    Text("You're offline", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF14201A))
-    Spacer(Modifier.height(6.dp))
-    Text("Check your internet connection and try again.", color = Color.Gray, fontSize = 13.sp)
-    Spacer(Modifier.height(18.dp))
-    Button(onClick = onRetry, shape = RoundedCornerShape(10.dp), colors = ButtonDefaults.buttonColors(containerColor = Brand)) {
-      Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Retry")
+@Composable private fun OfflineBanner(onRetry: () -> Unit, isOnline: () -> Boolean) {
+  Surface(color = Color(0xFF14201A), shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+      Icon(Icons.Default.CloudOff, "Offline", tint = Color(0xFFFFB300), modifier = Modifier.size(20.dp))
+      Spacer(Modifier.width(10.dp))
+      Column(Modifier.weight(1f)) {
+        Text("You're offline", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text("Showing saved content", color = Color.White.copy(alpha=0.75f), fontSize = 11.sp)
+      }
+      TextButton(onClick = onRetry, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("RETRY", color = Brand, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp) }
     }
   }
 }
